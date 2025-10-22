@@ -1,0 +1,6 @@
+run_id,timestamp,algorithm,learning_rate,batch_size,behavior_name,env_path,max_steps,seed,wall_time_sec,cpu_count,ram_gb,gpu_name,gpu_mem_gb,results_dir,git_commit,platform,user
+20250924-093406-3DBall-ppo-lr0.0003-bs1024-irene,20250924-093406,ppo,0.0003,1024,3DBall,C:\abs\path\to\3DBall\Build\3DBall.exe,500000,1,9.17,8,15.78,NVIDIA GeForce MX350,2.0,C:\PROJECT2-1\results,,Windows-10-10.0.26100-SP0,User
+20250924-095044-3DBall-ppo-lr0.0003-bs1024-irene,20250924-095044,ppo,0.0003,1024,3DBall,C:\PROJECT2-1\Builds\3DBall\3DBall.exe,500000,1,8.37,8,15.78,NVIDIA GeForce MX350,2.0,C:\PROJECT2-1\results,,Windows-10-10.0.26100-SP0,User
+20250924-095731-3DBall-ppo-lr0.0003-bs1024-irene,20250924-095731,ppo,0.0003,1024,3DBall,dummy,500000,1,7.01,8,15.78,NVIDIA GeForce MX350,2.0,C:\PROJECT2-1\results,,Windows-10-10.0.26100-SP0,User
+20250924-103443-3DBall-ppo-lr1e-05-bs1024-irene-lr1,20250924-103443,ppo,1e-05,1024,3DBall,,50000,1,90.36,8,15.78,NVIDIA GeForce MX350,2.0,C:\PROJECT2-1\results,,Windows-10-10.0.26100-SP0,User
+20250924-105457-3DBall-ppo-lr5e-05-bs1024-sanity,20250924-105457,ppo,5e-05,1024,3DBall,,10000,1,53.27,8,15.78,NVIDIA GeForce MX350,2.0,C:\PROJECT2-1\results,,Windows-10-10.0.26100-SP0,User

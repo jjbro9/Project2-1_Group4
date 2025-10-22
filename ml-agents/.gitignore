@@ -15,6 +15,13 @@
 # Custom settings asset
 *.settings.asset*
 
+# Unity cache 
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+
 # Visual Studio 2015 cache directory
 /Project/.vs/
 
