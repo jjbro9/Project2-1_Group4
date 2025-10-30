@@ -7,6 +7,7 @@ import json
 import csv
 import subprocess
 import platform
+import re
 import shutil
 from datetime import datetime
 from pathlib import Path
@@ -179,11 +180,32 @@ def main():
     # This joins the list cmd into a single readable string for logging.
     print("[INFO] Launching:", " ".join(cmd))
     start = time.time()
+    mean_rewards = []
+
     try:
-        # subprocess.Popen(cmd, ...) starts an external process without waiting for it to finish.
-        proc = subprocess.Popen(cmd, stdout=sys.stdout, stderr=sys.stderr)
+        # subprocess.Popen(cmd, ...) starts an external process without waiting for it to finish. The Pipe makes sure that a buffer is created in memory
+        proc = subprocess.Popen(
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+
+        # reads every line in search of Mean Reward to pass that along to the results folder?
+        for line in proc.stdout:
+            print(line, end="")
+            match = re.search(r"Mean Reward:\s*([0-9.+-e]+)", line)
+            if match:
+                try:
+                    value = float(match.group(1).rstrip("."))
+                    mean_rewards.append(value)
+                except ValueError:
+                    pass
+
         # proc.wait() blocks your script until that process exits.
-        ret = proc.wait()
+        proc.wait()
+
+        if mean_rewards:
+            mean_reward = sum(mean_rewards) / len(mean_rewards)
+        else:
+            mean_reward = 0.0
+
     except FileNotFoundError:
         print("[ERROR] 'mlagents-learn' not found. Activate the ML-Agents virtualenv or install ML-Agents.", file=sys.stderr)
         sys.exit(127)
@@ -206,6 +228,7 @@ def main():
         "ram_gb": ram_gb,
         "gpu_name": gpu_name,
         "gpu_mem_gb": gpu_mem_gb,
+        "mean_reward": mean_reward,
         "results_dir": os.path.abspath(args.results_dir),
         "git_commit": git_commit,
         "platform": platform.platform(),
