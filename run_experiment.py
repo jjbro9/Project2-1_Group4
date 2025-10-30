@@ -14,41 +14,81 @@ from pathlib import Path
 
 import psutil
 import yaml
+# import torch
 
 
 def detect_gpu():
-    try:
-        # Runs an external command and returns whatever it prints to stdout
-        out = subprocess.check_output(
-            # Program: nvidia-smi
-            # Args:
-            # --query-gpu=name,memory.total → ask for each GPU’s name and total memory.
-            # --format=csv,noheader → return it as CSV with no header row.
-            ["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader"],
-            # Merge stderr into stdout, so any error messages from nvidia-smi end up in the captured output
-            stderr=subprocess.STDOUT,
-            # You get a string back (not bytes), with newlines normalized for your platform/locale.
-            universal_newlines=True,
-            timeout=5
-        ).strip()
-        # Just checks whether the command actually printed anything.
-        if out:
-            line = out.splitlines()[0]
-            name, mem = [part.strip() for part in line.split(",")]
+    system = platform.system().lower()
+
+    # NVDIDIA chips
+    if system in ["windows", "linux"]:
+        try:
+            # Runs an external command and returns whatever it prints to stdout
+            out = subprocess.check_output(
+                # Program: nvidia-smi
+                # Args:
+                # --query-gpu=name,memory.total → ask for each GPU’s name and total memory.
+                # --format=csv,noheader → return it as CSV with no header row.
+                ["nvidia-smi", "--query-gpu=name,memory.total",
+                    "--format=csv,noheader"],
+                # Merge stderr into stdout, so any error messages from nvidia-smi end up in the captured output
+                stderr=subprocess.STDOUT,
+                # You get a string back (not bytes), with newlines normalized for your platform/locale.
+                universal_newlines=True,
+                timeout=5
+            ).strip()
+            # Just checks whether the command actually printed anything.
+            if out:
+                line = out.splitlines()[0]
+                name, mem = [part.strip() for part in line.split(",")]
+                mem_gb = None
+                mem.split()
+                # splits the string "10019 MiB" into a list of tokens: ["10019", "MiB"]
+                for token in mem.split():
+                    # Try to turn each token into a number (float(token)).
+                    try:
+                        mem_gb = float(token) / \
+                            1024.0 if "MiB" in mem else float(token)
+                    except:
+                        pass
+                return name, mem_gb
+        except Exception:
+            pass
+        return None, None
+
+    if system == "darwin":
+        try:
+            # Runs an external command and returns whatever it prints to stdout
+            output = subprocess.check_output(
+                # macOS version of obtaining GPU information
+                ["system_profiler", "SPDisplaysDataType"], text=True
+            )
+            name = None
             mem_gb = None
-            mem.split()
-            # splits the string "10019 MiB" into a list of tokens: ["10019", "MiB"]
-            for token in mem.split():
-                # Try to turn each token into a number (float(token)).
-                try:
-                    mem_gb = float(token) / \
-                        1024.0 if "MiB" in mem else float(token)
-                except:
-                    pass
+            for line in output.splitlines():
+                name_match = re.search(r"Chipset Model:\s*(.*)", line)
+                vram_match = re.search(r"VRAM.*:\s*(.*)", line)
+
+                if name_match:
+                    name = name_match.group(1).strip()
+                if vram_match:
+                    mem_gb = vram_match.group(1).strip()
+                    break
+
+            # new mac devices dont have a separte GPU memory and instead "share" it with the CPU. So therefor we will take the general memory
+            if not mem_gb and "Apple" in name:
+                hw_output = subprocess.check_output(
+                    ["system_profiler", "SPHardwareDataType"], text=True
+                )
+                mem_match = re.search(r"Memory:\s*(.*)", hw_output)
+                if mem_match:
+                    mem_gb = mem_match.group(1).strip()
             return name, mem_gb
-    except Exception:
-        pass
-    return None, None
+
+        except Exception:
+            pass
+        return None, None
+
 
 # csv_path: the file path to your CSV log.
 # fieldnames: list of column names (keys of the dicts you’ll write).
