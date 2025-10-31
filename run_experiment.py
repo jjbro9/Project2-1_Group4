@@ -242,7 +242,7 @@ def main():
         proc.wait()
 
         if mean_rewards:
-            mean_reward = sum(mean_rewards) / len(mean_rewards)
+            mean_reward = mean_rewards[-1]
         else:
             mean_reward = 0.0
 
