@@ -227,28 +227,33 @@ def main():
     # This joins the list cmd into a single readable string for logging.
     print("[INFO] Launching:", " ".join(cmd))
     start = time.time()
-    mean_rewards = []
 
     try:
         # subprocess.Popen(cmd, ...) starts an external process without waiting for it to finish.
         # The Pipe makes sure that a buffer is created in memory
         proc = subprocess.Popen(
             cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        mean_rewards = []
+        metrics = {
+            "buffer_size": None,
+            "beta": None,
+            "epsilon": None,
+            "lambd": None,
+            "num_epoch": None,
+            "time_horizon": None,
+            "summary_freq": None,
+            "num_layers": None,
+        }
+
+        # s*([0-9.+-e]+) Match one or more characters that are digits, a decimal point, a plus or minus sign, or the letter “e”.
+        patterns = {key: re.compile(
+            rf"{key}:\s*([0-9.+-e]+)") for key in metrics}
+        mean_pattern = re.compile(r"Mean Reward:\s*([0-9.+-e]+)")
 
         # reads every line in search of Mean Reward to pass that along to the results folder?
-        # s*([0-9.+-e]+) Match one or more characters that are digits, a decimal point, a plus or minus sign, or the letter “e”.
         for line in proc.stdout:
             print(line, end="")
-            match_mean = re.search(r"Mean Reward:\s*([0-9.+-e]+)", line)
-            match_buffer = re.search(r"buffer_size:\s*([0-9.+-e]+)", line)
-            match_horizon = re.search(r"time_horizon:\s*([0-9.+-e]+)", line)
-            match_freq = re.search(r"summary_freq:\s*([0-9.+-e]+)", line)
-            match_layer = re.search(r"num_layers:\s*([0-9.+-e]+)", line)
-            match_beta = re.search(r"beta:\s*([0-9.+-e]+)", line)
-            match_eps = re.search(r"epsilon:\s*([0-9.+-e]+)", line)
-            match_lam = re.search(r"lambd:\s*([0-9.+-e]+)", line)
-            match_epoch = re.search(r"num_epoch:\s*([0-9.+-e]+)", line)
-
+            match_mean = mean_pattern.search(line)
             if match_mean:
                 try:
                     value = float(match_mean.group(1).rstrip("."))
@@ -256,29 +261,13 @@ def main():
                 except ValueError:
                     pass
 
-            if match_buffer:
-                buffer = float(match_buffer.group(1))
-
-            if match_horizon:
-                horizon = float(match_horizon.group(1))
-
-            if match_freq:
-                freq = float(match_freq.group(1))
-
-            if match_layer:
-                layer = float(match_layer.group(1))
-
-            if match_beta:
-                beta = float(match_beta.group(1))
-
-            if match_eps:
-                eps = float(match_eps.group(1))
-
-            if match_lam:
-                lam = float(match_lam.group(1))
-
-            if match_epoch:
-                epoch = float(match_epoch.group(1))
+            for key, pattern in patterns.items():
+                match = pattern.search(line)
+                if match:
+                    try:
+                        metrics[key] = float(match.group(1))
+                    except ValueError:
+                        pass
 
         # proc.wait() blocks script until that process exits
         proc.wait()
@@ -300,19 +289,19 @@ def main():
         "timestamp": timestamp,
         "__training": args.algorithm,
         "batch_size": args.batch_size,
-        "buffer_size": buffer,
-        "beta": beta,
-        "epsilon": eps,
-        "lambda": lam,
-        "num_epoch": epoch,
+        "buffer_size": metrics["buffer_size"],
+        "beta": metrics["beta"],
+        "epsilon": metrics["epsilon"],
+        "lambd": metrics["lambd"],
+        "num_epoch": metrics["num_epoch"],
         "learning_rate": args.lr,
         "behavior_name": args.behavior_name,
         "env_path": args.env,
         "max_steps": b.get("max_steps", None),
         "seed": args.seed,
-        "time_horizon": horizon,
-        "summary_freq": freq,
-        "num_layer": layer,
+        "time_horizon": metrics["time_horizon"],
+        "summary_freq": metrics["summary_freq"],
+        "num_layers": metrics["num_layers"],
         # "wall_time_sec": wall_time_sec,
         "cpu_count": cpu_count,
         "ram_gb": ram_gb,
