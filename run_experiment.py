@@ -94,8 +94,6 @@ def detect_gpu():
 # fieldnames: list of column names (keys of the dicts you’ll write).
 # retries: how many times to retry if the file is locked (default 8).
 # delay: seconds to wait between retries (default 1.5).
-
-
 def ensure_header(csv_path, fieldnames, retries=8, delay=1.5):
     import time
     for i in range(retries):
@@ -142,6 +140,8 @@ def main():
     parser.add_argument("--run-tag", default="",
                         help="Free text tag (e.g., jon1, ireneA)")
     parser.add_argument("--no-graphics", action="store_true")
+    parser.add_argument("--set", nargs=2, action="append",
+                        metavar=('KEY', 'VALUE'), help="Set an arbitrary hyperparameter")
     args = parser.parse_args()
 
     # Opens your YAML file (e.g., experiments/base_config.yaml) and parses it into a normal Python dictionary called cfg.
@@ -165,6 +165,13 @@ def main():
     hp = b.setdefault("hyperparameters", {})
     hp["learning_rate"] = float(args.lr)
     hp["batch_size"] = int(args.batch_size)
+    if args.set:
+        for key, value in args.set:
+            try:
+                value = float(value)
+            except ValueError:
+                pass  # leave as string if not a float
+            hp[key] = value
     if args.max_steps is not None:
         b["max_steps"] = int(args.max_steps)
 
