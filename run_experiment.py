@@ -230,22 +230,57 @@ def main():
     mean_rewards = []
 
     try:
-        # subprocess.Popen(cmd, ...) starts an external process without waiting for it to finish. The Pipe makes sure that a buffer is created in memory
+        # subprocess.Popen(cmd, ...) starts an external process without waiting for it to finish.
+        # The Pipe makes sure that a buffer is created in memory
         proc = subprocess.Popen(
             cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
 
         # reads every line in search of Mean Reward to pass that along to the results folder?
+        # s*([0-9.+-e]+) Match one or more characters that are digits, a decimal point, a plus or minus sign, or the letter “e”.
         for line in proc.stdout:
             print(line, end="")
-            match = re.search(r"Mean Reward:\s*([0-9.+-e]+)", line)
-            if match:
+            match_mean = re.search(r"Mean Reward:\s*([0-9.+-e]+)", line)
+            match_buffer = re.search(r"buffer_size:\s*([0-9.+-e]+)", line)
+            match_horizon = re.search(r"time_horizon:\s*([0-9.+-e]+)", line)
+            match_freq = re.search(r"summary_freq:\s*([0-9.+-e]+)", line)
+            match_layer = re.search(r"num_layers:\s*([0-9.+-e]+)", line)
+            match_beta = re.search(r"beta:\s*([0-9.+-e]+)", line)
+            match_eps = re.search(r"epsilon:\s*([0-9.+-e]+)", line)
+            match_lam = re.search(r"lambd:\s*([0-9.+-e]+)", line)
+            match_epoch = re.search(r"num_epoch:\s*([0-9.+-e]+)", line)
+
+            if match_mean:
                 try:
-                    value = float(match.group(1).rstrip("."))
+                    value = float(match_mean.group(1).rstrip("."))
                     mean_rewards.append(value)
                 except ValueError:
                     pass
 
-        # proc.wait() blocks your script until that process exits.
+            if match_buffer:
+                buffer = float(match_buffer.group(1))
+
+            if match_horizon:
+                horizon = float(match_horizon.group(1))
+
+            if match_freq:
+                freq = float(match_freq.group(1))
+
+            if match_layer:
+                layer = float(match_layer.group(1))
+
+            if match_beta:
+                beta = float(match_beta.group(1))
+
+            if match_eps:
+                eps = float(match_eps.group(1))
+
+            if match_lam:
+                lam = float(match_lam.group(1))
+
+            if match_epoch:
+                epoch = float(match_epoch.group(1))
+
+        # proc.wait() blocks script until that process exits
         proc.wait()
 
         if mean_rewards:
@@ -264,12 +299,20 @@ def main():
         "run_id": run_id,
         "timestamp": timestamp,
         "__training": args.algorithm,
-        "learning_rate": args.lr,
         "batch_size": args.batch_size,
+        "buffer_size": buffer,
+        "beta": beta,
+        "epsilon": eps,
+        "lambda": lam,
+        "num_epoch": epoch,
+        "learning_rate": args.lr,
         "behavior_name": args.behavior_name,
         "env_path": args.env,
         "max_steps": b.get("max_steps", None),
         "seed": args.seed,
+        "time_horizon": horizon,
+        "summary_freq": freq,
+        "num_layer": layer,
         # "wall_time_sec": wall_time_sec,
         "cpu_count": cpu_count,
         "ram_gb": ram_gb,
