@@ -256,28 +256,28 @@ def main():
     except FileNotFoundError:
         print("[ERROR] 'mlagents-learn' not found. Activate the ML-Agents virtualenv or install ML-Agents.", file=sys.stderr)
         sys.exit(127)
-    end = time.time()
-    wall_time_sec = round(end - start, 2)
+    # end = time.time()
+    # wall_time_sec = round(end - start, 2)
 
     # Prepare log row
     row = {
         "run_id": run_id,
         "timestamp": timestamp,
-        "algorithm": args.algorithm,
+        "__training": args.algorithm,
         "learning_rate": args.lr,
         "batch_size": args.batch_size,
         "behavior_name": args.behavior_name,
         "env_path": args.env,
         "max_steps": b.get("max_steps", None),
         "seed": args.seed,
-        "wall_time_sec": wall_time_sec,
+        # "wall_time_sec": wall_time_sec,
         "cpu_count": cpu_count,
         "ram_gb": ram_gb,
         "gpu_name": gpu_name,
         "gpu_mem_gb": gpu_mem_gb,
         "mean_reward": mean_reward,
-        "results_dir": os.path.abspath(args.results_dir),
-        "git_commit": git_commit,
+        # "results_dir": os.path.abspath(args.results_dir),
+        # "git_commit": git_commit,
         "platform": platform.platform(),
         "user": os.environ.get("USERNAME") or os.environ.get("USER"),
     }
