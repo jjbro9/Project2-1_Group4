@@ -26,6 +26,8 @@ def main():
                         help="Batch size (kept fixed during sweep)")
     parser.add_argument("--env-path", default="none",
                         help="Path to built Unity env or 'none' for Editor mode")
+    parser.add_argument("--no-graphics", action="store_true",
+                        help="Run in headless mode")
     args = parser.parse_args()
 
     # generate the sweep values
@@ -42,12 +44,18 @@ def main():
                 f"--behavior-name={args.behavior_name}",
                 f"--algorithm={args.algorithm}",
                 f"--batch-size={args.batch_size}",
-                f"--lr={args.lr if hasattr(args,'lr') else 3e-4}",
+                # f"--lr={args.lr if hasattr(args,'lr') else 3e-4}",
+                "--lr", str(3e-4),
             ]
 
             # include environment only if not 'none'
             if args.env_path.lower() != "none":
-                cmd.extend(["--set", args.param, str(v)])
+                cmd.extend(["--env", args.env_path])
+                # cmd.append("--no-graphics")
+
+            # Add no-graphics flag if specified
+            if args.no_graphics:
+                cmd.append("--no-graphics")
 
             # insert the hyperparameter being swept
             cmd.extend(["--set", args.param, str(v)])

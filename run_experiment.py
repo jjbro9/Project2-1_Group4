@@ -220,6 +220,7 @@ def main():
     # then the script adds the flag --env=<path> to the ML-Agents command.
     if args.env and args.env.lower() not in {"editor", "none", "dummy"}:
         cmd.append(f"--env={args.env}")
+        cmd.append("--no-graphics")  # Headless mode
 
     if args.no_graphics:
         cmd.append("--no-graphics")
@@ -246,8 +247,9 @@ def main():
         }
 
         # s*([0-9.+-e]+) Match one or more characters that are digits, a decimal point, a plus or minus sign, or the letter “e”.
+        # also indents at the beginning of the hyperparameter
         patterns = {key: re.compile(
-            rf"{key}:\s*([0-9.+-e]+)") for key in metrics}
+            rf"^\s*{key}:\s*([0-9.+-e]+)", re.IGNORECASE) for key in metrics}
         mean_pattern = re.compile(r"Mean Reward:\s*([0-9.+-e]+)")
 
         # reads every line in search of Mean Reward to pass that along to the results folder?
@@ -280,8 +282,8 @@ def main():
     except FileNotFoundError:
         print("[ERROR] 'mlagents-learn' not found. Activate the ML-Agents virtualenv or install ML-Agents.", file=sys.stderr)
         sys.exit(127)
-    # end = time.time()
-    # wall_time_sec = round(end - start, 2)
+    end = time.time()
+    wall_time_sec = round(end - start, 2)
 
     # Prepare log row
     row = {
@@ -327,6 +329,37 @@ def main():
     print(
         f"[HINT] You can visualize training with: tensorboard --logdir {args.results_dir}")
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--set", nargs=2, action='append',
+                        help="Set hyperparameter and value")
+    args = parser.parse_args()
+
+    # Convert list of [param, value] pairs to dict
+    hyperparams = {param: float(value) for param, value in (args.set or [])}
+
 
 if __name__ == "__main__":
     main()
+
+# f __name__ == "_main_":
+#     # Define the range of max_steps values you want to test
+#     max_steps_values = [50000, 100000, 300000, 500000, 1000000]
+
+#     # Loop through each experiment configuration
+#     for steps in max_steps_values:
+#         import sys
+#         sys.argv = [
+#             "run_experiment.py",
+#             "--algorithm", "ppo",
+#             "--lr", "3e-4",
+#             "--batch-size", "1024",
+#             "--behavior-name", "3DBall",
+#             "--env", "/Users/mariamkamara/Desktop/Project2-1/ml-agents/Project/Build/3DBallBuild.app",
+#             "--max-steps", str(steps),
+#             "--run-tag", f"maxsteps{steps}",
+#             "--no-graphics"
+#         ]
+
+#         print(f"\n Starting experiment with max_steps={steps}\n")
+#         main()
+#         print(f"\n Finished experiment with max_steps={steps}\n")
