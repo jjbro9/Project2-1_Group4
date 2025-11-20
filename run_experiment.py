@@ -7,14 +7,14 @@ import json
 import csv
 import subprocess
 import platform
-import re
 import shutil
 from datetime import datetime
 from pathlib import Path
+import re
+
 
 import psutil
 import yaml
-# import torch
 
 
 def detect_gpu():
@@ -23,29 +23,18 @@ def detect_gpu():
     # NVDIDIA chips
     if system in ["windows", "linux"]:
         try:
-            # Runs an external command and returns whatever it prints to stdout
             out = subprocess.check_output(
-                # Program: nvidia-smi
-                # Args:
-                # --query-gpu=name,memory.total → ask for each GPU’s name and total memory.
-                # --format=csv,noheader → return it as CSV with no header row.
                 ["nvidia-smi", "--query-gpu=name,memory.total",
                     "--format=csv,noheader"],
-                # Merge stderr into stdout, so any error messages from nvidia-smi end up in the captured output
                 stderr=subprocess.STDOUT,
-                # You get a string back (not bytes), with newlines normalized for your platform/locale.
                 universal_newlines=True,
                 timeout=5
             ).strip()
-            # Just checks whether the command actually printed anything.
             if out:
                 line = out.splitlines()[0]
                 name, mem = [part.strip() for part in line.split(",")]
                 mem_gb = None
-                mem.split()
-                # splits the string "10019 MiB" into a list of tokens: ["10019", "MiB"]
                 for token in mem.split():
-                    # Try to turn each token into a number (float(token)).
                     try:
                         mem_gb = float(token) / \
                             1024.0 if "MiB" in mem else float(token)
@@ -90,32 +79,20 @@ def detect_gpu():
         return None, None
 
 
-# csv_path: the file path to your CSV log.
-# fieldnames: list of column names (keys of the dicts you’ll write).
-# retries: how many times to retry if the file is locked (default 8).
-# delay: seconds to wait between retries (default 1.5).
 def ensure_header(csv_path, fieldnames, retries=8, delay=1.5):
     import time
     for i in range(retries):
         try:
-            # Open the file in append mode ("a"):
-            # If the file exists → it appends new rows at the end.
-            # If it doesn’t exist → it creates the file automatically.
             exists = os.path.exists(csv_path)
             f = open(csv_path, "a", newline="", encoding="utf-8")
             writer = csv.DictWriter(f, fieldnames=fieldnames)
-            # If the file didn’t exist before (i.e., you just created it):
-            # Write a header row once at the top — the column names.
-            # If it did exist, skip this so you don’t add duplicate headers.
             if not exists:
                 writer.writeheader()
             return f, writer
         except PermissionError:
-            # If we’ve already tried retries times and it’s still locked, re-raise the error.
             if i == retries - 1:
                 raise
             print(f"[WARN] CSV locked; retrying in {delay}s...")
-            # Otherwise, print a warning and wait delay seconds before trying again.
             time.sleep(delay)
 
 
@@ -123,16 +100,52 @@ def main():
     parser = argparse.ArgumentParser(
         description="Run an ML-Agents experiment and log metadata.")
     parser.add_argument("--algorithm", choices=["ppo", "sac"], default="ppo")
-    parser.add_argument("--lr", type=float, required=True,
-                        help="Learning rate")
+
+    # Hyperparameters
     parser.add_argument("--batch-size", type=int,
-                        required=True, help="Batch size")
+                        default=1024, help="Batch size")
+    parser.add_argument("--buffer-size", type=int,
+                        default=10240, help="Buffer size")
+    parser.add_argument("--learning-rate", type=float,
+                        default=3.0e-4, help="Learning rate")
+    parser.add_argument("--beta", type=float, default=5.0e-4,
+                        help="Beta (entropy regularization)")
+    parser.add_argument("--epsilon", type=float,
+                        default=0.2, help="Epsilon (PPO clip)")
+    parser.add_argument("--lambd", type=float,
+                        default=0.95, help="Lambda (GAE)")
+    parser.add_argument("--num-epoch", type=int,
+                        default=3, help="Number of epochs")
+    parser.add_argument("--learning-rate-schedule",
+                        choices=["linear", "constant"], default="linear", help="LR schedule")
+
+    # Network settings
+    parser.add_argument("--normalize", type=bool,
+                        default=False, help="Normalize observations")
+    parser.add_argument("--hidden-units", type=int,
+                        default=128, help="Hidden units per layer")
+    parser.add_argument("--num-layers", type=int, default=2,
+                        help="Number of hidden layers")
+
+    # Reward signals
+    parser.add_argument("--gamma", type=float,
+                        default=0.99, help="Discount factor")
+    parser.add_argument("--reward-strength", type=float,
+                        default=1.0, help="Extrinsic reward strength")
+
+    # Training settings
+    parser.add_argument("--max-steps", type=int,
+                        default=50000, help="Maximum training steps")
+    parser.add_argument("--time-horizon", type=int,
+                        default=64, help="Time horizon")
+    parser.add_argument("--summary-freq", type=int,
+                        default=10000, help="Summary frequency")
+
+    # Other settings
     parser.add_argument("--env", default=None,
                         help="Path to built Unity env (omit for Editor mode)")
     parser.add_argument("--behavior-name", required=True,
                         help="Behavior name as shown on the Agent in Unity")
-    parser.add_argument("--max-steps", type=int,
-                        default=None, help="Override max_steps")
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--results-dir", default="results")
     parser.add_argument(
@@ -140,12 +153,13 @@ def main():
     parser.add_argument("--run-tag", default="",
                         help="Free text tag (e.g., jon1, ireneA)")
     parser.add_argument("--no-graphics", action="store_true")
+
     parser.add_argument("--set", nargs=2, action="append",
                         metavar=('KEY', 'VALUE'), help="Set an arbitrary hyperparameter")
+
     args = parser.parse_args()
 
-    # Opens your YAML file (e.g., experiments/base_config.yaml) and parses it into a normal Python dictionary called cfg.
-    # YAML → dict means you can now read/modify it like cfg["behaviors"]["3DBall"]["hyperparameters"]["learning_rate"].
+    # Load base config and patch it
     with open(args.base_config, "r", encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
 
@@ -159,21 +173,44 @@ def main():
             f"[ERROR] Behavior '{args.behavior_name}' not found in config. Available: {list(behaviors.keys())}", file=sys.stderr)
         sys.exit(2)
 
-    # Patch fields
+    # # Patch all fields
     b = behaviors[args.behavior_name]
     b["trainer_type"] = args.algorithm
+    # if args.set:
+    #     for key, value in args.set:
+    #         try:
+    #             value = float(value)
+    #         except ValueError:
+    #             pass  # leave as string if not a float
+    #         hp[key] = value
+
+    # Hyperparameters
     hp = b.setdefault("hyperparameters", {})
-    hp["learning_rate"] = float(args.lr)
-    hp["batch_size"] = int(args.batch_size)
-    if args.set:
-        for key, value in args.set:
-            try:
-                value = float(value)
-            except ValueError:
-                pass  # leave as string if not a float
-            hp[key] = value
-    if args.max_steps is not None:
-        b["max_steps"] = int(args.max_steps)
+    hp["batch_size"] = args.batch_size
+    hp["buffer_size"] = args.buffer_size
+    hp["learning_rate"] = args.learning_rate
+    hp["beta"] = args.beta
+    hp["epsilon"] = args.epsilon
+    hp["lambd"] = args.lambd
+    hp["num_epoch"] = args.num_epoch
+    hp["learning_rate_schedule"] = args.learning_rate_schedule
+
+    # Network settings
+    ns = b.setdefault("network_settings", {})
+    ns["normalize"] = args.normalize
+    ns["hidden_units"] = args.hidden_units
+    ns["num_layers"] = args.num_layers
+
+    # Reward signals
+    rs = b.setdefault("reward_signals", {})
+    extrinsic = rs.setdefault("extrinsic", {})
+    extrinsic["gamma"] = args.gamma
+    extrinsic["strength"] = args.reward_strength
+
+    # Training settings
+    b["max_steps"] = args.max_steps
+    b["time_horizon"] = args.time_horizon
+    b["summary_freq"] = args.summary_freq
 
     # Write generated config
     gen_dir = Path("experiments/_generated")
@@ -186,7 +223,7 @@ def main():
 
     # Compose run id
     tag_part = f"-{args.run_tag}" if args.run_tag else ""
-    run_id = f"{timestamp}-{args.behavior_name}-{args.algorithm}-lr{args.lr}-bs{args.batch_size}{tag_part}"
+    run_id = f"{timestamp}-{args.behavior_name}-{args.algorithm}-lr{args.learning_rate}-bs{args.batch_size}{tag_part}"
 
     # Detect hardware
     cpu_count = psutil.cpu_count(logical=True)
@@ -210,14 +247,6 @@ def main():
         f"--seed={args.seed}",
     ]
 
-    # args.env is the argument you pass via --env on the command line.
-    # In Unity ML-Agents, there are two ways to connect your environment:
-    # Editor mode: you press Play in Unity and ML-Agents connects to the running Editor.
-    # Built player: you export a standalone executable of the environment and run it headlessly.
-    # So:
-    # If you did supply an environment path (args.env is not None),
-    # and it’s not a placeholder like "editor", "none", or "dummy",
-    # then the script adds the flag --env=<path> to the ML-Agents command.
     if args.env and args.env.lower() not in {"editor", "none", "dummy"}:
         cmd.append(f"--env={args.env}")
         cmd.append("--no-graphics")  # Headless mode
@@ -225,10 +254,8 @@ def main():
     if args.no_graphics:
         cmd.append("--no-graphics")
 
-    # This joins the list cmd into a single readable string for logging.
     print("[INFO] Launching:", " ".join(cmd))
     start = time.time()
-
     try:
         # subprocess.Popen(cmd, ...) starts an external process without waiting for it to finish.
         # The Pipe makes sure that a buffer is created in memory
@@ -285,18 +312,18 @@ def main():
     end = time.time()
     wall_time_sec = round(end - start, 2)
 
-    # Prepare log row
+    # Prepare log row with all hyperparameters
     row = {
         "run_id": run_id,
         "timestamp": timestamp,
-        "__training": args.algorithm,
+        "algorithm": args.algorithm,
         "batch_size": args.batch_size,
         "buffer_size": metrics["buffer_size"],
         "beta": metrics["beta"],
         "epsilon": metrics["epsilon"],
         "lambd": metrics["lambd"],
         "num_epoch": metrics["num_epoch"],
-        "learning_rate": args.lr,
+        "learning_rate": args.learning_rate,
         "behavior_name": args.behavior_name,
         "env_path": args.env,
         "max_steps": b.get("max_steps", None),
@@ -314,6 +341,12 @@ def main():
         # "git_commit": git_commit,
         "platform": platform.platform(),
         "user": os.environ.get("USERNAME") or os.environ.get("USER"),
+        "learning_rate_schedule": args.learning_rate_schedule,
+        "hidden_units": args.hidden_units,
+        "normalize": args.normalize,
+        "gamma": args.gamma,
+        "reward_strength": args.reward_strength,
+
     }
 
     # Write to CSV
@@ -340,26 +373,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-# f __name__ == "_main_":
-#     # Define the range of max_steps values you want to test
-#     max_steps_values = [50000, 100000, 300000, 500000, 1000000]
-
-#     # Loop through each experiment configuration
-#     for steps in max_steps_values:
-#         import sys
-#         sys.argv = [
-#             "run_experiment.py",
-#             "--algorithm", "ppo",
-#             "--lr", "3e-4",
-#             "--batch-size", "1024",
-#             "--behavior-name", "3DBall",
-#             "--env", "/Users/mariamkamara/Desktop/Project2-1/ml-agents/Project/Build/3DBallBuild.app",
-#             "--max-steps", str(steps),
-#             "--run-tag", f"maxsteps{steps}",
-#             "--no-graphics"
-#         ]
-
-#         print(f"\n Starting experiment with max_steps={steps}\n")
-#         main()
-#         print(f"\n Finished experiment with max_steps={steps}\n")

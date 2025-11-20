@@ -45,7 +45,7 @@ def main():
                 f"--algorithm={args.algorithm}",
                 f"--batch-size={args.batch_size}",
                 # f"--lr={args.lr if hasattr(args,'lr') else 3e-4}",
-                "--lr", str(3e-4),
+                # "--learning-rate", str(3e-4),
             ]
 
             # include environment only if not 'none'
