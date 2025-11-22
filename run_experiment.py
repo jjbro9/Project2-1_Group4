@@ -176,13 +176,6 @@ def main():
     # # Patch all fields
     b = behaviors[args.behavior_name]
     b["trainer_type"] = args.algorithm
-    # if args.set:
-    #     for key, value in args.set:
-    #         try:
-    #             value = float(value)
-    #         except ValueError:
-    #             pass  # leave as string if not a float
-    #         hp[key] = value
 
     # Hyperparameters
     hp = b.setdefault("hyperparameters", {})
@@ -194,6 +187,15 @@ def main():
     hp["lambd"] = args.lambd
     hp["num_epoch"] = args.num_epoch
     hp["learning_rate_schedule"] = args.learning_rate_schedule
+
+    # Setting the arguments
+    if args.set:
+        for key, value in args.set:
+            try:
+                value = float(value)
+            except ValueError:
+                pass  # leave as string if not a float
+            hp[key] = value
 
     # Network settings
     ns = b.setdefault("network_settings", {})
