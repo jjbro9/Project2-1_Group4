@@ -364,10 +364,10 @@ def main():
     print(
         f"[HINT] You can visualize training with: tensorboard --logdir {args.results_dir}")
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--set", nargs=2, action='append',
-                        help="Set hyperparameter and value")
-    args = parser.parse_args()
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument("--set", nargs=2, action='append',
+    #                     help="Set hyperparameter and value")
+    # args = parser.parse_args()
 
     # Convert list of [param, value] pairs to dict
     hyperparams = {param: float(value) for param, value in (args.set or [])}
