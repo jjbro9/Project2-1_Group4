@@ -188,15 +188,6 @@ def main():
     hp["num_epoch"] = args.num_epoch
     hp["learning_rate_schedule"] = args.learning_rate_schedule
 
-    # Setting the arguments
-    if args.set:
-        for key, value in args.set:
-            try:
-                value = float(value)
-            except ValueError:
-                pass  # leave as string if not a float
-            hp[key] = value
-
     # Network settings
     ns = b.setdefault("network_settings", {})
     ns["normalize"] = args.normalize
@@ -213,6 +204,27 @@ def main():
     b["max_steps"] = args.max_steps
     b["time_horizon"] = args.time_horizon
     b["summary_freq"] = args.summary_freq
+
+    # Setting the arguments
+    if args.set:
+        for key, value in args.set:
+            try:
+                value = float(value)
+            except ValueError:
+                pass  # leave as string if not a float
+
+            if key in ["max_steps", "time_horizon", "summary_freq"]:
+                # Training settings
+                b[key] = value
+            elif key in ["hidden_units", "num_layers", "normalize"]:
+                # Network settings
+                ns[key] = value
+            elif key in ["gamma"]:
+                extrinsic[key] = value
+            elif key == "strength":
+                extrinsic[key] = value
+            else:
+                hp[key] = value
 
     # Write generated config
     gen_dir = Path("experiments/_generated")
@@ -320,22 +332,22 @@ def main():
         "timestamp": timestamp,
         "behavior_name": args.behavior_name,
         "algorithm": args.algorithm,
-        "batch_size": args.batch_size,
-        "buffer_size": metrics["buffer_size"],
-        "learning_rate": args.learning_rate,
-        "beta": metrics["beta"],
-        "epsilon": metrics["epsilon"],
-        "lambd": metrics["lambd"],
-        "num_epoch": metrics["num_epoch"],
-        "learning_rate_schedule": args.learning_rate_schedule,
-        "normalize": args.normalize,
-        "hidden_units": args.hidden_units,
-        "num_layers": metrics["num_layers"],
-        "gamma": args.gamma,
-        "reward_strength": args.reward_strength,
-        "max_steps": b.get("max_steps", None),
-        "time_horizon": metrics["time_horizon"],
-        "summary_freq": metrics["summary_freq"],
+        "batch_size": hp.get("batch_size", args.batch_size),
+        "buffer_size": hp.get("buffer_size", metrics["buffer_size"]),
+        "learning_rate": hp.get("learning_rate", args.learning_rate),
+        "beta": hp.get("beta", metrics["beta"]),
+        "epsilon": hp.get("epsilon", metrics["epsilon"]),
+        "lambd": hp.get("lambd", metrics["lambd"]),
+        "num_epoch": hp.get("num_epoch", metrics["num_epoch"]),
+        "learning_rate_schedule": hp.get("learning_rate_schedule", args.learning_rate_schedule),
+        "normalize": ns.get("normalize", args.normalize),
+        "hidden_units": ns.get("hidden_units", args.hidden_units),
+        "num_layers": ns.get("num_layers", metrics["num_layers"]),
+        "gamma": extrinsic.get("gamma", args.gamma),
+        "reward_strength": extrinsic.get("strength", args.reward_strength),
+        "max_steps": b.get("max_steps", args.max_steps),
+        "time_horizon": b.get("time_horizon", args.time_horizon),
+        "summary_freq": b.get("summary_freq", args.summary_freq),
         "seed": args.seed,
         "mean_reward": mean_reward,
         "cpu_count": cpu_count,
