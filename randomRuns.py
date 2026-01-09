@@ -4,15 +4,55 @@ import subprocess
 import sys
 import random
 import numpy as np
+from itertools import product
+
+
+def generate_log_scale_grid(min_val, max_val, num_points):
+    """Generate grid points on a log scale."""
+    log_min = np.log10(min_val)
+    log_max = np.log10(max_val)
+    log_points = np.linspace(log_min, log_max, num_points)
+    return [10 ** x for x in log_points]
+
+
+def generate_linear_grid(min_val, max_val, num_points, is_integer=False):
+    """Generate grid points on a linear scale."""
+    points = np.linspace(min_val, max_val, num_points)
+    if is_integer:
+        # Round to nearest integer and remove duplicates
+        points = [int(round(p)) for p in points]
+        # Remove duplicates while preserving order
+        seen = set()
+        return [x for x in points if not (x in seen or seen.add(x))]
+    return points.tolist()
+
+
+def generate_grid_combinations(param_grids):
+    """Generate all combinations from parameter grids using itertools.product."""
+    param_names = list(param_grids.keys())
+    param_values = [param_grids[name] for name in param_names]
+    
+    combinations = []
+    for combo in product(*param_values):
+        combination_dict = {name: val for name, val in zip(param_names, combo)}
+        combinations.append(combination_dict)
+    
+    return combinations
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Run multiple experiments with random hyperparameters.")
-    parser.add_argument("--num-runs", type=int, required=True,
-                        help="Number of random runs to execute")
-    parser.add_argument("--range-percent", type=float, required=True,
-                        help="Percentage of the full range to sample from (e.g., 0.95 for center 95%)")
+        description="Run multiple experiments with grid search hyperparameter optimization.")
+    
+    # Grid search arguments
+    parser.add_argument("--grid-size", type=int, default=3,
+                        help="Number of grid points per parameter")
+    parser.add_argument("--max-combinations", type=int, default=None,
+                        help="Maximum number of combinations to test (None = all combinations)")
+    parser.add_argument("--randomize-grid-order", action="store_true",
+                        help="Randomize the order of grid combinations (useful for early stopping)")
+    
+    # Common arguments
     parser.add_argument("--behavior-name", required=True,
                         help="Behavior name in Unity")
     parser.add_argument("--algorithm", default="ppo",
@@ -49,8 +89,8 @@ def main():
         "normalize": False,
     }
 
-    # Parameters to randomize
-    params_to_randomize = list(param_ranges.keys())
+    # Parameters to search over
+    params_to_search = list(param_ranges.keys())
 
     # Integer parameters (will be rounded)
     integer_params = {"batch_size", "buffer_size", "num_epoch",
@@ -58,58 +98,57 @@ def main():
 
     # Log-scale parameters (better distribution for rates)
     log_scale_params = {"learning_rate", "beta"}
-
-    print(f"[INFO] Starting {args.num_runs} random runs")
-    print(
-        f"[INFO] Sampling from center {args.range_percent*100}% of defined ranges")
+    
+    # Generate grid points for each parameter
+    param_grids = {}
+    for param in params_to_search:
+        min_val, max_val, default_val = param_ranges[param]
+        
+        if param in log_scale_params:
+            # Log scale for learning rates and beta
+            grid_points = generate_log_scale_grid(min_val, max_val, args.grid_size)
+        elif param in integer_params:
+            # Integer parameters
+            grid_points = generate_linear_grid(min_val, max_val, args.grid_size, is_integer=True)
+        else:
+            # Linear scale for other parameters
+            grid_points = generate_linear_grid(min_val, max_val, args.grid_size, is_integer=False)
+        
+        param_grids[param] = grid_points
+    
+    # Generate all combinations
+    all_combinations = generate_grid_combinations(param_grids)
+    
+    # Limit combinations if specified
+    if args.max_combinations is not None and len(all_combinations) > args.max_combinations:
+        if args.randomize_grid_order:
+            random.shuffle(all_combinations)
+        all_combinations = all_combinations[:args.max_combinations]
+    elif args.randomize_grid_order:
+        random.shuffle(all_combinations)
+    
+    num_runs = len(all_combinations)
+    
+    # Print configuration
+    print(f"[INFO] Grid Search Mode: {num_runs} combinations to test")
+    print(f"[INFO] Grid size per parameter: {args.grid_size}")
+    total_combinations = np.prod([len(param_grids[p]) for p in params_to_search])
+    if total_combinations != num_runs:
+        print(f"[INFO] Total possible combinations: {total_combinations} (limited to {num_runs})")
+    print()
+    
     print(f"[INFO] Parameter ranges:")
     for param, (min_val, max_val, default_val) in param_ranges.items():
-        print(
-            f"  {param:20s}: [{min_val:12.6g}, {max_val:12.6g}]  (default: {default_val:12.6g})")
+        print(f"  {param:20s}: [{min_val:12.6g}, {max_val:12.6g}]  (default: {default_val:12.6g})")
     print()
 
-    for run_idx in range(args.num_runs):
+    for run_idx in range(num_runs):
         print(f"{'='*70}")
-        print(f"[INFO] Random Run {run_idx+1}/{args.num_runs}")
+        print(f"[INFO] Grid Search Run {run_idx+1}/{num_runs}")
         print(f"{'='*70}")
 
-        # Generate random values for each hyperparameter
-        random_params = {}
-        for param in params_to_randomize:
-            min_val, max_val, default_val = param_ranges[param]
-
-            # Calculate the full range
-            full_range = max_val - min_val
-
-            # Calculate the center of the range
-            center = (min_val + max_val) / 2.0
-
-            # Calculate the reduced range based on percentage
-            reduced_range = full_range * args.range_percent
-
-            # Calculate new min and max (centered)
-            sampling_min = center - (reduced_range / 2.0)
-            sampling_max = center + (reduced_range / 2.0)
-
-            # Ensure we don't go outside original bounds (edge case)
-            sampling_min = max(sampling_min, min_val)
-            sampling_max = min(sampling_max, max_val)
-
-            # Generate random value in the sampling range
-            if param in log_scale_params:
-                # Log scale for learning rates and beta
-                log_min = np.log10(sampling_min)
-                log_max = np.log10(sampling_max)
-                random_val = 10 ** random.uniform(log_min, log_max)
-            elif param in integer_params:
-                # Integer parameters
-                random_val = random.randint(
-                    int(sampling_min), int(sampling_max))
-            else:
-                # Linear scale for other parameters
-                random_val = random.uniform(sampling_min, sampling_max)
-
-            random_params[param] = random_val
+        # Use pre-generated combination
+        run_params = all_combinations[run_idx]
 
         # Build command
         cmd = [
@@ -120,19 +159,19 @@ def main():
             f"--seed={args.seed_base + run_idx}",
         ]
 
-        # Add all randomized hyperparameters
-        cmd.append(f"--batch-size={random_params['batch_size']}")
-        cmd.append(f"--buffer-size={random_params['buffer_size']}")
-        cmd.append(f"--learning-rate={random_params['learning_rate']}")
-        cmd.append(f"--beta={random_params['beta']}")
-        cmd.append(f"--epsilon={random_params['epsilon']}")
-        cmd.append(f"--lambd={random_params['lambd']}")
-        cmd.append(f"--num-epoch={random_params['num_epoch']}")
-        cmd.append(f"--hidden-units={random_params['hidden_units']}")
-        cmd.append(f"--num-layers={random_params['num_layers']}")
-        cmd.append(f"--gamma={random_params['gamma']}")
-        cmd.append(f"--reward-strength={random_params['reward_strength']}")
-        cmd.append(f"--time-horizon={random_params['time_horizon']}")
+        # Add all hyperparameters
+        cmd.append(f"--batch-size={run_params['batch_size']}")
+        cmd.append(f"--buffer-size={run_params['buffer_size']}")
+        cmd.append(f"--learning-rate={run_params['learning_rate']}")
+        cmd.append(f"--beta={run_params['beta']}")
+        cmd.append(f"--epsilon={run_params['epsilon']}")
+        cmd.append(f"--lambd={run_params['lambd']}")
+        cmd.append(f"--num-epoch={run_params['num_epoch']}")
+        cmd.append(f"--hidden-units={run_params['hidden_units']}")
+        cmd.append(f"--num-layers={run_params['num_layers']}")
+        cmd.append(f"--gamma={run_params['gamma']}")
+        cmd.append(f"--reward-strength={run_params['reward_strength']}")
+        cmd.append(f"--time-horizon={run_params['time_horizon']}")
 
         # Add fixed parameters
         cmd.append(f"--max-steps={fixed_params['max_steps']}")
@@ -149,25 +188,17 @@ def main():
         if args.no_graphics:
             cmd.append("--no-graphics")
 
-        # Add run tag to identify this as a random run
-        cmd.append(f"--run-tag=random{run_idx+1}")
+        # Add run tag to identify this run
+        cmd.append(f"--run-tag=grid{run_idx+1}")
 
         # Print the parameters being used
-        print(f"[INFO] Random hyperparameters for this run:")
-        for param in sorted(params_to_randomize):
-            value = random_params[param]
+        print(f"[INFO] Grid search hyperparameters for this run:")
+        for param in sorted(params_to_search):
+            value = run_params[param]
             min_val, max_val, default_val = param_ranges[param]
-
-            # Calculate sampling range for display
-            full_range = max_val - min_val
-            center = (min_val + max_val) / 2.0
-            reduced_range = full_range * args.range_percent
-            sampling_min = max(center - (reduced_range / 2.0), min_val)
-            sampling_max = min(center + (reduced_range / 2.0), max_val)
-
             print(f"  {param:20s} = {value:12.6g}  "
-                  f"(range: [{sampling_min:10.6g}, {sampling_max:10.6g}], "
-                  f"full: [{min_val:10.6g}, {max_val:10.6g}])")
+                  f"(range: [{min_val:10.6g}, {max_val:10.6g}], "
+                  f"default: {default_val:10.6g})")
         print()
 
         # Run the experiment
@@ -176,21 +207,18 @@ def main():
 
         try:
             subprocess.check_call(cmd)
-            print(
-                f"[SUCCESS] Run {run_idx+1}/{args.num_runs} completed successfully")
+            print(f"[SUCCESS] Run {run_idx+1}/{num_runs} completed successfully")
         except subprocess.CalledProcessError as e:
-            print(
-                f"[ERROR] Run {run_idx+1}/{args.num_runs} failed with return code {e.returncode}")
+            print(f"[ERROR] Run {run_idx+1}/{num_runs} failed with return code {e.returncode}")
             print(f"[WARNING] Continuing with next run...")
         except KeyboardInterrupt:
-            print(
-                f"\n[ABORT] User interrupted. Stopping after {run_idx} runs.")
+            print(f"\n[ABORT] User interrupted. Stopping after {run_idx} runs.")
             sys.exit(1)
 
         print()
 
     print(f"{'='*70}")
-    print(f"[DONE] All {args.num_runs} random runs complete!")
+    print(f"[DONE] All {num_runs} grid search combinations complete!")
     print(f"{'='*70}")
 
 
