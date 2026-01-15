@@ -60,7 +60,7 @@ def make_model():
         verbose=1
     )
 
-    kfold = KFold(n_splits=10, shuffle=True, random_state=1)
+    kfold = KFold(n_splits=10, shuffle=True, random_state=None)
 
     cv_score = cross_val_score(gb_model, X, y, cv=kfold, scoring='r2')
     cv_mse = -cross_val_score(gb_model, X, y, cv=kfold,
@@ -74,19 +74,19 @@ def make_model():
     # print("RMSE:", rmse)
     # print("MAE:", mean_absolute_error(y, predictions))
 
-    print("K-Fold results")
+    print("\nK-Fold results\n")
     print(f"R² scores: {cv_score}")
-    print(f"mean R²: {cv_score.mean():.4f} (+/- {cv_score.std():.4f})")
+    print(f"Mean R²: {cv_score.mean():.4f} (+/- {cv_score.std():.4f})")
 
     print(f"MSE scores: {cv_mse}")
-    print(f"mean MSE: {cv_mse.mean():.4f} (+/- {cv_mse.std():.4f})")
+    print(f"Mean MSE: {cv_mse.mean():.4f} (+/- {cv_mse.std():.4f})")
 
     print(f"MAE scores: {cv_mae}")
-    print(f"mean MAE: {cv_mae.mean():.4f} (+/- {cv_mae.std():.4f})")
+    print(f"Mean MAE: {cv_mae.mean():.4f} (+/- {cv_mae.std():.4f})\n")
 
     gb_model.fit(X, y)
 
-    print("Feature Importances")
+    print("\nFeature Importances\n")
     feature_importances = gb_model.feature_importances_
     for name, score in zip(X.columns, feature_importances):
         print(f"{name}: {score:.4f}")

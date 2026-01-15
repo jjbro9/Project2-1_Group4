@@ -58,7 +58,7 @@ def make_model():
 
     lr_model = LinearRegression()
 
-    kfold = KFold(n_splits=10, shuffle=True, random_state=1)
+    kfold = KFold(n_splits=10, shuffle=True, random_state=None)
 
     cv_score = cross_val_score(lr_model, X_scaled, y, cv=kfold, scoring='r2')
     cv_mse = -cross_val_score(lr_model, X_scaled, y, cv=kfold,
