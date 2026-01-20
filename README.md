@@ -26,24 +26,13 @@ python run_experiment.py   --algorithm ppo   --lr 3e-4   --batch-size 1024   --e
 - ML‑Agents results go to `results/`.
 - A **single row** of metadata is appended to `data/experiments.csv`.
 
-## Who runs what (example mapping)
+## Commands for the codes
+linear_regres
 
-- **Jon** – switch algorithms (e.g., `ppo` vs `sac`)
-- **Irene** – sweep **learning rate**
-- **Mariam** – sweep **batch size**
-- **Ronan** – learning rate (replication / other behaviors/seeds)
-- **Lucie** – different **Unity environment** (e.g., `Walker`, `Crawler`, etc.)
 
-Everyone uses the **same script** (`run_experiment.py`) so results are comparable.
-
-## Tips
-
-- Behavior name placeholder in `experiments/base_config.yaml` will be replaced the first time you pass `--behavior-name`.
-- Use `--run-tag` to add a short personal tag to the `run_id`.
-- Launch TensorBoard with `tensorboard --logdir results` to see training curves.
 
 ## Data schema (data/experiments.csv)
+Data will be exported to  `data/experiments.csv` 
 
 `run_id, timestamp, algorithm, learning_rate, batch_size, behavior_name, env_path, max_steps, seed, wall_time_sec, cpu_count, ram_gb, gpu_name, gpu_mem_gb, results_dir, git_commit, platform, user`
 
-Keep `data/experiments.csv` under version control so the whole group can merge results.
