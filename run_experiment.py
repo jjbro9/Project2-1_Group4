@@ -1,17 +1,13 @@
-#!/usr/bin/env python3
 import argparse
 import os
 import sys
 import time
-import json
 import csv
 import subprocess
 import platform
-import shutil
 from datetime import datetime
 from pathlib import Path
 import re
-
 
 import psutil
 import yaml
@@ -45,11 +41,10 @@ def detect_gpu():
             pass
         return None, None
 
+    # Mac devices
     if system == "darwin":
         try:
-            # Runs an external command and returns whatever it prints to stdout
             output = subprocess.check_output(
-                # macOS version of obtaining GPU information
                 ["system_profiler", "SPDisplaysDataType"], text=True
             )
             name = None
@@ -64,7 +59,6 @@ def detect_gpu():
                     mem_gb = vram_match.group(1).strip()
                     break
 
-            # new mac devices dont have a separte GPU memory and instead "share" it with the CPU. So therefor we will take the general memory
             if not mem_gb and "Apple" in name:
                 hw_output = subprocess.check_output(
                     ["system_profiler", "SPHardwareDataType"], text=True
@@ -77,6 +71,8 @@ def detect_gpu():
         except Exception:
             pass
         return None, None
+
+# Ensures headers for the csv table
 
 
 def ensure_header(csv_path, fieldnames, retries=8, delay=1.5):
@@ -173,7 +169,7 @@ def main():
             f"[ERROR] Behavior '{args.behavior_name}' not found in config. Available: {list(behaviors.keys())}", file=sys.stderr)
         sys.exit(2)
 
-    # # Patch all fields
+    # Patch all fields
     b = behaviors[args.behavior_name]
     b["trainer_type"] = args.algorithm
 
@@ -211,7 +207,7 @@ def main():
             try:
                 value = float(value)
             except ValueError:
-                pass  # leave as string if not a float
+                pass
 
             if key in ["max_steps", "time_horizon", "summary_freq"]:
                 # Training settings
@@ -263,7 +259,7 @@ def main():
 
     if args.env and args.env.lower() not in {"editor", "none", "dummy"}:
         cmd.append(f"--env={args.env}")
-        cmd.append("--no-graphics")  # Headless mode
+        cmd.append("--no-graphics")  # run without unity
 
     if args.no_graphics:
         cmd.append("--no-graphics")
@@ -271,8 +267,6 @@ def main():
     print("[INFO] Launching:", " ".join(cmd))
     start = time.time()
     try:
-        # subprocess.Popen(cmd, ...) starts an external process without waiting for it to finish.
-        # The Pipe makes sure that a buffer is created in memory
         proc = subprocess.Popen(
             cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         mean_rewards = []
@@ -287,13 +281,10 @@ def main():
             "num_layers": None,
         }
 
-        # s*([0-9.+-e]+) Match one or more characters that are digits, a decimal point, a plus or minus sign, or the letter “e”.
-        # also indents at the beginning of the hyperparameter
         patterns = {key: re.compile(
             rf"^\s*{key}:\s*([0-9.+-e]+)", re.IGNORECASE) for key in metrics}
         mean_pattern = re.compile(r"Mean Reward:\s*([0-9.+-e]+)")
 
-        # reads every line in search of Mean Reward to pass that along to the results folder?
         for line in proc.stdout:
             print(line, end="")
             match_mean = mean_pattern.search(line)
@@ -312,7 +303,6 @@ def main():
                     except ValueError:
                         pass
 
-        # proc.wait() blocks script until that process exits
         proc.wait()
 
         if mean_rewards:
@@ -357,10 +347,6 @@ def main():
         "platform": platform.platform(),
         "user": os.environ.get("USERNAME") or os.environ.get("USER"),
         "env_path": args.env
-        # "wall_time_sec": wall_time_sec,
-        # "results_dir": os.path.abspath(args.results_dir),
-        # "git_commit": git_commit,
-
     }
 
     # Write to CSV
@@ -376,12 +362,6 @@ def main():
     print(
         f"[HINT] You can visualize training with: tensorboard --logdir {args.results_dir}")
 
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument("--set", nargs=2, action='append',
-    #                     help="Set hyperparameter and value")
-    # args = parser.parse_args()
-
-    # Convert list of [param, value] pairs to dict
     hyperparams = {param: float(value) for param, value in (args.set or [])}
 
 
