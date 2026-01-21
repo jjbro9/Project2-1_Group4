@@ -3,7 +3,6 @@
 
 ## Overview
 Predicting Unity ML-Agents training performance from hyperparameters using supervised learning.
-<!-- This repository supports our on predicting Unity ML-Agents training performance  from hyperparameters using supervised learning.  -->
 
 ## Description
 This study investigates the extent to which an agent’s final performance, measured by mean reward, can be predicted using only training parameters available before training.
@@ -52,6 +51,30 @@ python run_experiment.py \
 
 
 ## Usage 
+**linear_regression.py** \
+Trains a Linear Regression Model on experiment data, evaluates that data with K-Fold cross-validation and predicts rewards for new datasets.
+```bash
+python linear_regression.py
+```
+
+**gradient_boosting.py** \
+Trains a Gradient Boosting Regressor on experiment data, evaluates that data with K-Fold cross-validation and predicts rewards for new datasets.
+```bash
+python gradient_boosting.py
+```
+
+**optimzer.py** \
+Trains a Gradient Boosting Regressor on experiment data, optimizes hyperparameters via cross-validation and predicts rewards for new datasets.
+```bash
+python optimzer.py
+```
+
+**run_experiment.py** \
+Launches a Unity ML-Agents training run with configurable hyperparameters and logs all metadata and results to a CSV for later analysis.
+```bash
+python run_experiment.py
+```
+
 **random_runs.py** \
 Samples random hyperparameter configurations within a specified percentage range and runs multiple ML-Agents training sessions.
 ```bash
@@ -102,16 +125,11 @@ python sweep.py \
 --env-path "/path/to/Project2-1/ml-agents/Project/Build/EnvironmentBuild.app" 
 ```
 
-**optimizer.py**
-```bash
-```
-
-
 Note: 
 ```bash
 --no-graphics
 ```
-This line at the end of a command ensures that the training can run without Unity in the background.
+Add this line at the end of a command to ensure that the training can run without Unity in the background.
 
 
 ## Data schema (data/experiments.csv)

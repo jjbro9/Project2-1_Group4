@@ -9,7 +9,7 @@ from sklearn.preprocessing import LabelEncoder
 
 # training the model based on the hyperparameters
 def make_model():
-    df = pd.read_csv('experiments_merged.csv')
+    df = pd.read_csv('experiments-merged-clean.csv')
     print(df.columns)
 
     drop_cols = ['run_id', 'timestamp', 'user', 'env_path',

@@ -84,6 +84,7 @@ def load(url):
         return None
 
 
+# Optimizing hyperparameters
 def optimize(gb_model, param_grid, X_train, y_train, cv):
     grid_search = GridSearchCV(
         estimator=gb_model,
