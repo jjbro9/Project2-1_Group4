@@ -57,11 +57,10 @@ Samples random hyperparameter configurations within a specified percentage range
 ```bash
 # choose own values
 python random_runs.py \
---num-runs=num_runs \
---range-percent=0.95 \ # recommended value
---behavior-name=name \
---env-path "/path/to/Project2-1/ml-agents/Project/Build/EnvironmentBuild.app" \
---no-graphics # ensures running without animation
+--num-runs num_runs \
+--range-percent value \
+--behavior-name name \
+--env-path "/path/to/Project2-1/ml-agents/Project/Build/EnvironmentBuild.app"
 ```
 
 **grid_search.py** \
@@ -70,9 +69,9 @@ Performs a grid search over specified hyperparameter values.
 ```bash
 # choose own values
 python grid_search.py \
---batch_size 1 \ 
+--batch_size 1 \
 --buffer_size 1 \
---learning_rate 1\
+--learning_rate 1 \
 --beta 1 \
 --epsilon 1 \
 --lambd 1 \
@@ -82,9 +81,7 @@ python grid_search.py \
 --gamma 1 \
 --reward_strength 1 \
 --time_horizon 1 \
---max_steps 1 \
---env "/path/to/Project2-1/ml-agents/Project/Build/EnvironmentBuild.app" \
---no-graphics # ensures running without animation
+--max_steps 1 
 ```
 
 
@@ -102,13 +99,19 @@ python sweep.py \
 --behavior-name behaviour_name \
 --algorithm algorithm \
 --batch-size batch_size \
---env-path "/path/to/Project2-1/ml-agents/Project/Build/EnvironmentBuild.app" \
---no-graphics # ensures running without animation
+--env-path "/path/to/Project2-1/ml-agents/Project/Build/EnvironmentBuild.app" 
 ```
 
 **optimizer.py**
 ```bash
 ```
+
+
+Note: 
+```bash
+--no-graphics
+```
+This line at the end of a command ensures that the training can run without Unity in the background.
 
 
 ## Data schema (data/experiments.csv)

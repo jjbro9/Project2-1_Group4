@@ -6,7 +6,6 @@ import requests
 from numpy.ma.extras import average
 from sklearn.model_selection import train_test_split, KFold, cross_val_score
 from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import GridSearchCV
 
@@ -97,9 +96,8 @@ def optimize(gb_model, param_grid, X_train, y_train, cv):
     print(f"Best Tree Complexity Score (R2): {grid_search.best_score_}")
     print(f"Best Parameters: {grid_search.best_params_}")
 
+
 # predicting a new data set, given a csv file
-
-
 def predict(model, feature_names, url):
     data = load(url)
     if data is None:

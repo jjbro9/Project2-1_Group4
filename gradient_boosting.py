@@ -2,13 +2,12 @@ from io import StringIO
 
 import pandas as pd
 import requests
-from sklearn.model_selection import train_test_split, cross_val_score, KFold
+from sklearn.model_selection import cross_val_score, KFold
 from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.preprocessing import LabelEncoder
 
 
-# training the model based on the hyperparams
+# training the model based on the hyperparameters
 def make_model():
     df = pd.read_csv('experiments_merged.csv')
     print(df.columns)
@@ -44,9 +43,6 @@ def make_model():
     assert not X.isna().any().any(), "NaNs remain in X!"
     assert not y.isna().any(), "NaNs remain in y!"
 
-    # X_train, X_test, y_train, y_test = train_test_split(
-    #     X, y, test_size=0.2, random_state=1
-    # )
     print(X.dtypes)
 
     gb_model = GradientBoostingRegressor(
@@ -60,6 +56,7 @@ def make_model():
         verbose=1
     )
 
+    # Apply the kfold and cross validation
     kfold = KFold(n_splits=10, shuffle=True, random_state=None)
 
     cv_score = cross_val_score(gb_model, X, y, cv=kfold, scoring='r2')
@@ -68,12 +65,7 @@ def make_model():
     cv_mae = -cross_val_score(gb_model, X, y, cv=kfold,
                               scoring='neg_mean_absolute_error')
 
-    # predictions = gb_model.predict(X)
-    # rmse = mean_squared_error(y, predictions)
-    # print("R²:", r2_score(y, predictions))
-    # print("RMSE:", rmse)
-    # print("MAE:", mean_absolute_error(y, predictions))
-
+    # Printing the results
     print("\nK-Fold results\n")
     print(f"R² scores: {cv_score}")
     print(f"Mean R²: {cv_score.mean():.4f} (+/- {cv_score.std():.4f})")
@@ -93,6 +85,8 @@ def make_model():
 
     return gb_model, list(X.columns)
 
+# Loading the url
+
 
 def load(url):
     try:
@@ -104,7 +98,7 @@ def load(url):
     except:
         return None
 
-# predicting a new data set, given a csv file
+# Predicting a new data set, given a csv file
 
 
 def predict(model, feature_names, url):
@@ -126,6 +120,7 @@ def predict(model, feature_names, url):
         print(f"Row {i}: Predicted Reward = {prediction:.4f}")
 
 
+# Making the model
 model, feature_names = make_model()
 while True:
     url = input("\nEnter the URL of the CSV file (or 'quit' to exit): ").strip()

@@ -1,4 +1,3 @@
-# sweep.py
 import argparse
 import subprocess
 import sys
@@ -6,6 +5,7 @@ import numpy as np
 
 
 def main():
+    # Parser
     parser = argparse.ArgumentParser(
         description="Sweep a single hyperparameter over multiple runs.")
     parser.add_argument("--param", required=True,
@@ -43,15 +43,12 @@ def main():
                 "run_experiment.py",
                 f"--behavior-name={args.behavior_name}",
                 f"--algorithm={args.algorithm}",
-                f"--batch-size={args.batch_size}",
-                # f"--lr={args.lr if hasattr(args,'lr') else 3e-4}",
-                # "--learning-rate", str(3e-4),
+                f"--batch-size={args.batch_size}"
             ]
 
             # include environment only if not 'none'
             if args.env_path.lower() != "none":
                 cmd.extend(["--env", args.env_path])
-                # cmd.append("--no-graphics")
 
             # Add no-graphics flag if specified
             if args.no_graphics:

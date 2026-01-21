@@ -1,4 +1,3 @@
-# random_runs.py
 import argparse
 import subprocess
 import sys

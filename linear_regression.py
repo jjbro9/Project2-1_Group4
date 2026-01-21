@@ -3,10 +3,9 @@ from io import StringIO
 import numpy as np
 import pandas as pd
 import requests
-from sklearn.model_selection import KFold, cross_val_score, train_test_split
+from sklearn.model_selection import KFold, cross_val_score
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.preprocessing import LabelEncoder
 
 
@@ -46,9 +45,6 @@ def make_model():
     assert not X.isna().any().any(), "NaNs remain in X!"
     assert not y.isna().any(), "NaNs remain in y!"
 
-    # X_train, X_test, y_train, y_test = train_test_split(
-    #     X, y, test_size=0.2, random_state=1
-    # )
     print(X.dtypes)
 
     # scale features for better coeffient view
@@ -58,6 +54,7 @@ def make_model():
 
     lr_model = LinearRegression()
 
+    # Apply the kfold and cross validation
     kfold = KFold(n_splits=10, shuffle=True, random_state=None)
 
     cv_score = cross_val_score(lr_model, X_scaled, y, cv=kfold, scoring='r2')
@@ -66,6 +63,7 @@ def make_model():
     cv_mae = -cross_val_score(lr_model, X_scaled, y, cv=kfold,
                               scoring='neg_mean_absolute_error')
 
+    # Printing the results
     print("\nK-Fold results")
     print(f"R² scores: \t{cv_score}")
     print(f"Mean R²: \t{cv_score.mean():.4f} (+/- {cv_score.std():.4f})")
@@ -78,14 +76,7 @@ def make_model():
 
     lr_model.fit(X_scaled, y)
 
-    # predictions = lr_model.predict(X_test)
-    # rmse = mean_squared_error(y_test, predictions)
-
-    # print("R²:", r2_score(y_test, predictions))
-    # print("RMSE:", rmse)
-    # print("MAE:", mean_absolute_error(y_test, predictions))
-    # # print("MSE: ", MSE(y, y_pre))
-
+    # Sorting the results
     print("\nCoefficients (sorted)")
     coefficients = pd.DataFrame({
         'Feature': X.columns,
@@ -100,6 +91,8 @@ def make_model():
 
     return lr_model, list(X.columns), scaler
 
+# Loading the url
+
 
 def load(url):
     try:
@@ -110,6 +103,8 @@ def load(url):
         return df
     except:
         return None
+
+# Predicting the results
 
 
 def predict(model, feature_names, scaler, url):
